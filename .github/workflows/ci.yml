@@ -1,0 +1,93 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # nightly (SDD §20.5 scheduled tier: PG matrix + release gates)
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  fast:
+    name: fast checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - run: gofmt -l . | (! grep .)
+        name: gofmt check
+      - run: go vet ./...
+      - run: go test ./...
+      - run: go test -race ./...
+      - run: go build -o /tmp/siiasql ./cmd/siiasql
+
+  merge-bound:
+    name: merge-bound (${{ matrix.pg }} + e2e)
+    if: github.event_name == 'pull_request'
+    needs: fast
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        pg: [15, 18]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: PostgreSQL ${{ matrix.pg }} integration
+        env:
+          SIIASQL_IT_PORT: 55432
+        run: ./scripts/it-pg.sh ${{ matrix.pg }}
+      - name: stdio E2E
+        run: go test -tags=e2e -count=1 ./internal/e2e/
+
+  fuzz:
+    name: fuzz smoke (bounded)
+    if: github.event_name == 'pull_request'
+    needs: fast
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      # Fuzzing is non-deterministic and slow; a bounded smoke catches
+      # parse/encoder panics and bound violations on every merge (SDD §20.2).
+      - name: bounded fuzz per target
+        run: make fuzz FUZZ_TIME=15s
+
+  scheduled-pg:
+    name: PostgreSQL ${{ matrix.pg }} scheduled
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: fast
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        pg: [15, 16, 17, 18]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: PostgreSQL ${{ matrix.pg }} integration
+        run: ./scripts/it-pg.sh ${{ matrix.pg }}
+
+  scheduled:
+    name: scheduled / release
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: fast
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: native build gate
+        run: make cross-build
+      - name: extended fuzz per target
+        run: make fuzz-long FUZZ_TIME_LONG=10m
