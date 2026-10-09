@@ -33,8 +33,8 @@ completas el archivo de entorno con los secretos.
 
    ```sh
    SIIA_DB_HOST=127.0.0.1
-   SIIA_DB_DATABASE=ser
-   SIIA_DB_USER=mcp_reader
+   SIIA_DB_DATABASE=mydb
+   SIIA_DB_USER=readonly_user
    SIIA_DB_PASSWORD=...
    ```
 
@@ -207,7 +207,7 @@ network:
 
 # SIIASQL se conecta con una única conexión de solo lectura a SER v3.0.
 connection:
-  name: siia_ser
+  name: app_ro
   engine: postgres
   mode: readonly
   required: true
@@ -228,7 +228,7 @@ connection:
   allow:
     schemas:
       - public
-      - rrhh
+      - reporting
 ```
 
 ### Reglas importantes
