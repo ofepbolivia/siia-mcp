@@ -1,28 +1,13 @@
 # SIIASQL — MCP de SIIA
 
-`siiasql` es el servidor MCP de SIIA. Expone al orquestador de IA de SIIA una superficie de
-**consultas SQL de solo lectura** sobre SER v3.0, más herramientas de introspección para
-descubrir el esquema. Habla MCP por `stdio`, impone un guard de AST de solo lectura y límites
-de recursos, y mantiene las credenciales fuera de logs, auditoría y respuestas MCP.
+`siiasql` es el servidor MCP de SIIA. Expone una superficie de **consultas SQL de solo
+lectura** sobre SER v3.0, más herramientas de introspección para descubrir el esquema. Habla
+MCP por `stdio`, impone un guard de AST de solo lectura y límites de recursos, y mantiene las
+credenciales fuera de logs, auditoría y respuestas MCP.
 
 No ejecuta escritura ni DDL: cada sentencia pasa por un guard de AST que solo admite un
 `SELECT` de solo lectura. El alcance de objetos alcanzables se acota con la lista de permisos
 de la conexión y con los permisos reales del rol PostgreSQL.
-
-## Rol en la arquitectura de SIIA
-
-Este repositorio cubre únicamente el MCP. El navegador, la API y el orquestador viven fuera de
-él; aquí solo importa la frontera que el MCP expone y consume:
-
-```text
-Orquestador de IA ──► SIIASQL MCP (stdio) ──► SER v3.0
-```
-
-- El orquestador es el único consumidor: descubre el esquema, construye el SQL y lo ejecuta por el MCP.
-- El MCP es la frontera de solo lectura: valida y ejecuta; ninguna sentencia puede escribir, alterar o bloquear.
-- SER v3.0 (PostgreSQL) es la única fuente soportada.
-
-El contexto completo de la plataforma está en [`docs/siiasql-prd.md`](docs/siiasql-prd.md).
 
 ## Inicio Rápido
 
@@ -68,9 +53,6 @@ completas el archivo de entorno con los secretos.
    Comprueba que la config y el entorno cargan, que el sink de auditoría es escribible y que la
    conexión responde a `db_ping`.
 
-El MCP queda listo para que el orquestador lo lance. El contrato de esa integración está en
-[Integración con el orquestador](#integración-con-el-orquestador).
-
 ## Requisitos
 
 | Requisito | Nota |
@@ -85,8 +67,8 @@ El MCP queda listo para que el orquestador lo lance. El contrato de esa integrac
 - **Solo lectura.** No existen operaciones de escritura ni DDL.
 - **SQL de solo lectura permitido.** `db_query` y `db_explain` aceptan SQL parametrizado; el
   guard de AST rechaza cualquier cosa que no sea un `SELECT` único.
-- **Introspección disponible.** El orquestador puede listar esquemas, tablas, columnas, índices
-  y relaciones para construir consultas.
+- **Introspección disponible.** Se pueden listar esquemas, tablas, columnas, índices y
+  relaciones para construir consultas.
 - **Alcance acotado.** `allow.schemas`/`allow.views` restringe los objetos alcanzables; el rol
   PostgreSQL de solo lectura es la frontera base.
 - **Límites de recursos.** Tiempo, filas, tamaño de valor, tamaño de respuesta y concurrencia
@@ -142,15 +124,19 @@ make build            # genera bin/siiasql
 go build -o bin/siiasql ./cmd/siiasql
 ```
 
-Prefiere una ruta explícita (`bin/siiasql`) para configurar el orquestador.
+Prefiere una ruta explícita (`bin/siiasql`) para lanzar el servidor.
 
 ## Comandos
 
 | Comando | Propósito |
 |---------|-----------|
-| `siiasql --config <path>` | Inicia el MCP por `stdio` (normalmente lanzado por el orquestador). |
+| `siiasql --config <path>` | Inicia el servidor MCP por `stdio`. |
 | `siiasql init [--config <path>]` | Crea la configuración base, el sink de auditoría y el esqueleto de secretos. |
 | `siiasql doctor [--config <path>]` | Verifica configuración, entorno, sink de auditoría y salud de la conexión. |
+
+`siiasql --config <path>` no es un comando interactivo: espera mensajes del protocolo MCP en
+`stdin` y escribe las respuestas en `stdout`. Al ejecutarlo manualmente registra `server.ready`
+en `stderr` y queda esperando mensajes MCP.
 
 ### Rutas por defecto
 
@@ -259,30 +245,6 @@ connection:
 
 `host`, `database`, `user` y `password` se resuelven del archivo de entorno mediante `${VAR}`
 (`SIIA_DB_HOST`, `SIIA_DB_DATABASE`, `SIIA_DB_USER`, `SIIA_DB_PASSWORD`); `port` queda literal.
-
-## Integración con el orquestador
-
-El MCP no es un comando interactivo para humanos: es un servidor `stdio` que el orquestador de
-SIIA lanza con `--config` y sin argumentos extra. Al ejecutarlo manualmente registra
-`server.ready` en `stderr` y queda esperando mensajes del protocolo MCP en `stdin`; escribe las
-respuestas del protocolo en `stdout`.
-
-La forma del registro es:
-
-```json
-{
-  "mcpServers": {
-    "siiasql": {
-      "command": "/ruta/absoluta/a/siiasql-mcp/bin/siiasql",
-      "args": ["--config", "/ruta/absoluta/a/siiasql/config.yaml"]
-    }
-  }
-}
-```
-
-No pongas credenciales de conexión en la config del cliente: viven en la config y el archivo de
-entorno de SIIASQL. Mantén la salida de logs y auditoría fuera de `stdout`; `stdout` debe quedar
-solo para el protocolo MCP.
 
 ## Herramientas MCP
 
