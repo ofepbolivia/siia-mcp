@@ -1,0 +1,73 @@
+{
+  "name": "db_list_relationships",
+  "description": "List foreign key relationships visible by policy, with optional source, target, and column filters.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "column": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "minLength": 1,
+        "maxLength": 63
+      },
+      "connection": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64
+      },
+      "cursor": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "minLength": 1,
+        "maxLength": 1024
+      },
+      "limit": {
+        "type": [
+          "integer",
+          "null"
+        ],
+        "minimum": 1
+      },
+      "schema": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "minLength": 1,
+        "maxLength": 63
+      },
+      "table": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "minLength": 1,
+        "maxLength": 63
+      },
+      "to_schema": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "minLength": 1,
+        "maxLength": 63
+      },
+      "to_table": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "minLength": 1,
+        "maxLength": 63
+      }
+    },
+    "required": [
+      "connection"
+    ],
+    "additionalProperties": false
+  }
+}

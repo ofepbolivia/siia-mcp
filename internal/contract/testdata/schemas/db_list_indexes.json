@@ -1,0 +1,45 @@
+{
+  "name": "db_list_indexes",
+  "description": "List indexes of an authorized table.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "connection": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64
+      },
+      "cursor": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "minLength": 1,
+        "maxLength": 1024
+      },
+      "limit": {
+        "type": [
+          "integer",
+          "null"
+        ],
+        "minimum": 1
+      },
+      "schema": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 63
+      },
+      "table": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 63
+      }
+    },
+    "required": [
+      "connection",
+      "schema",
+      "table"
+    ],
+    "additionalProperties": false
+  }
+}

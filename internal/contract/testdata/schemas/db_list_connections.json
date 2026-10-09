@@ -1,0 +1,8 @@
+{
+  "name": "db_list_connections",
+  "description": "List configured connections without exposing credentials.",
+  "inputSchema": {
+    "type": "object",
+    "additionalProperties": false
+  }
+}

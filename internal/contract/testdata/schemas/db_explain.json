@@ -1,0 +1,68 @@
+{
+  "name": "db_explain",
+  "description": "Return the allowed execution plan without ANALYZE.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "analyze": {
+        "type": [
+          "boolean",
+          "null"
+        ]
+      },
+      "connection": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64
+      },
+      "limits": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "max_response_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          },
+          "timeout_ms": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          }
+        },
+        "additionalProperties": false
+      },
+      "parameters": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string"
+            },
+            "value": {}
+          },
+          "required": [
+            "type",
+            "value"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "sql": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "connection",
+      "sql"
+    ],
+    "additionalProperties": false
+  }
+}

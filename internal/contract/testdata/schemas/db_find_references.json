@@ -1,0 +1,38 @@
+{
+  "name": "db_find_references",
+  "description": "Find authorized columns whose values match a given value, returning a match count per column.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "connection": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64
+      },
+      "patterns": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "schema": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "minLength": 1,
+        "maxLength": 63
+      },
+      "value": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128
+      }
+    },
+    "required": [
+      "connection",
+      "value"
+    ],
+    "additionalProperties": false
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "db_ping",
+  "description": "Check a configured connection is reachable.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "connection": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64
+      },
+      "timeout_ms": {
+        "type": [
+          "integer",
+          "null"
+        ],
+        "minimum": 1
+      }
+    },
+    "required": [
+      "connection"
+    ],
+    "additionalProperties": false
+  }
+}

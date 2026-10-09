@@ -1,0 +1,43 @@
+{
+  "name": "db_count_rows",
+  "description": "Return an exact row count or timeout.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "connection": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64
+      },
+      "estimate": {
+        "type": [
+          "boolean",
+          "null"
+        ]
+      },
+      "schema": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 63
+      },
+      "table": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 63
+      },
+      "timeout_ms": {
+        "type": [
+          "integer",
+          "null"
+        ],
+        "minimum": 1
+      }
+    },
+    "required": [
+      "connection",
+      "schema",
+      "table"
+    ],
+    "additionalProperties": false
+  }
+}

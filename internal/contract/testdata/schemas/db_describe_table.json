@@ -1,0 +1,30 @@
+{
+  "name": "db_describe_table",
+  "description": "Describe columns, types, keys and constraints of a table.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "connection": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64
+      },
+      "schema": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 63
+      },
+      "table": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 63
+      }
+    },
+    "required": [
+      "connection",
+      "schema",
+      "table"
+    ],
+    "additionalProperties": false
+  }
+}

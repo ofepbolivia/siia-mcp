@@ -1,0 +1,44 @@
+{
+  "name": "db_sample_rows",
+  "description": "Return a small bounded sample of rows.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "connection": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64
+      },
+      "max_rows": {
+        "type": [
+          "integer",
+          "null"
+        ],
+        "minimum": 1
+      },
+      "schema": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 63
+      },
+      "table": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 63
+      },
+      "timeout_ms": {
+        "type": [
+          "integer",
+          "null"
+        ],
+        "minimum": 1
+      }
+    },
+    "required": [
+      "connection",
+      "schema",
+      "table"
+    ],
+    "additionalProperties": false
+  }
+}
