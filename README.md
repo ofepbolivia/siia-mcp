@@ -11,13 +11,18 @@ de la conexión y con los permisos reales del rol PostgreSQL.
 
 ## Rol en la arquitectura de SIIA
 
+Este repositorio cubre únicamente el MCP. El navegador, la API y el orquestador viven fuera de
+él; aquí solo importa la frontera que el MCP expone y consume:
+
 ```text
-Navegador ──► API NestJS ──► Orquestador de IA ──► SIIASQL MCP (stdio) ──► SER v3.0
+Orquestador de IA ──► SIIASQL MCP (stdio) ──► SER v3.0
 ```
 
-- El navegador nunca alcanza el MCP ni la base de datos.
-- El orquestador descubre el esquema y construye las consultas; el MCP las valida y ejecuta.
-- El MCP es la frontera de solo lectura: ninguna sentencia puede escribir, alterar o bloquear.
+- El orquestador es el único consumidor: descubre el esquema, construye el SQL y lo ejecuta por el MCP.
+- El MCP es la frontera de solo lectura: valida y ejecuta; ninguna sentencia puede escribir, alterar o bloquear.
+- SER v3.0 (PostgreSQL) es la única fuente soportada.
+
+El contexto completo de la plataforma está en [`docs/siiasql-prd.md`](docs/siiasql-prd.md).
 
 ## Inicio Rápido
 
