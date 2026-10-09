@@ -68,15 +68,8 @@ completas el archivo de entorno con los secretos.
    Comprueba que la config y el entorno cargan, que el sink de auditoría es escribible y que la
    conexión responde a `db_ping`.
 
-6. Registra el comando en el orquestador de SIIA. El orquestador lanza:
-
-   ```bash
-   siiasql --config /ruta/absoluta/a/config.yaml
-   ```
-
-   Ese comando inicia el servidor MCP por `stdio`: espera mensajes del protocolo MCP en `stdin`
-   y escribe respuestas del protocolo en `stdout`. No es un comando interactivo para humanos.
-   Al ejecutarlo manualmente registra `server.ready` en `stderr` y queda esperando mensajes MCP.
+El MCP queda listo para que el orquestador lo lance. El contrato de esa integración está en
+[Integración con el orquestador](#integración-con-el-orquestador).
 
 ## Requisitos
 
@@ -267,10 +260,14 @@ connection:
 `host`, `database`, `user` y `password` se resuelven del archivo de entorno mediante `${VAR}`
 (`SIIA_DB_HOST`, `SIIA_DB_DATABASE`, `SIIA_DB_USER`, `SIIA_DB_PASSWORD`); `port` queda literal.
 
-## Configuración del cliente MCP
+## Integración con el orquestador
 
-El orquestador de SIIA lanza el binario con `--config` y sin argumentos extra. La forma del
-registro es:
+El MCP no es un comando interactivo para humanos: es un servidor `stdio` que el orquestador de
+SIIA lanza con `--config` y sin argumentos extra. Al ejecutarlo manualmente registra
+`server.ready` en `stderr` y queda esperando mensajes del protocolo MCP en `stdin`; escribe las
+respuestas del protocolo en `stdout`.
+
+La forma del registro es:
 
 ```json
 {
