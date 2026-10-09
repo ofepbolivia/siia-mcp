@@ -90,9 +90,6 @@ cross-build: ## native build gate (cgo forbids single-host cross-compile)
 	CGO_ENABLED=1 $(GO) build -o /tmp/siiasql-native ./cmd/siiasql
 	@echo "OK"
 
-.PHONY: scheduled
-scheduled: it-matrix cross-build test-race fuzz-long
-
 ## ---------- Misc ----------
 .PHONY: clean
 clean:

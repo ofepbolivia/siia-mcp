@@ -308,7 +308,6 @@ make e2e         # pruebas E2E MCP a nivel de protocolo
 make it          # pruebas de integración (Docker o Podman; PG 15 y 18)
 make it-matrix   # matriz completa PostgreSQL 15-18
 make fuzz        # fuzz smoke acotado
-make scheduled   # tier pesado: matriz, race, fuzz extendido
 ```
 
 Los tests de integración levantan un contenedor PostgreSQL efímero vía
