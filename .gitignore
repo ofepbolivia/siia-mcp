@@ -1,0 +1,11 @@
+# Build output
+/bin/
+/dist/
+/siiasql
+
+# Local temporary module files
+/go.mod.tmp
+
+# Audit/log artifacts produced by local runs
+*.jsonl
+.atl
