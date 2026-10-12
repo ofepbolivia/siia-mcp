@@ -2,8 +2,8 @@
 
 `siiasql` es el servidor MCP de SIIA. Expone una superficie de **consultas SQL de solo
 lectura** sobre SER v3.0, más herramientas de introspección para descubrir el esquema. Habla
-MCP por `stdio`, impone un guard de AST de solo lectura y límites de recursos, y mantiene las
-credenciales fuera de logs, auditoría y respuestas MCP.
+MCP por `stdio` y, opcionalmente, por Streamable HTTP; impone un guard de AST de solo lectura y
+límites de recursos, y mantiene las credenciales fuera de logs, auditoría y respuestas MCP.
 
 No ejecuta escritura ni DDL: cada sentencia pasa por un guard de AST que solo admite un
 `SELECT` de solo lectura. El alcance de objetos alcanzables se acota con la lista de permisos
@@ -130,13 +130,14 @@ Prefiere una ruta explícita (`bin/siiasql`) para lanzar el servidor.
 
 | Comando | Propósito |
 |---------|-----------|
-| `siiasql --config <path>` | Inicia el servidor MCP por `stdio`. |
+| `siiasql --config <path>` | Inicia el servidor MCP; por `stdio` o, con `--http <addr>`, sobre Streamable HTTP. |
 | `siiasql init [--config <path>]` | Crea la configuración base, el sink de auditoría y el esqueleto de secretos. |
 | `siiasql doctor [--config <path>]` | Verifica configuración, entorno, sink de auditoría y salud de la conexión. |
 
 `siiasql --config <path>` no es un comando interactivo: espera mensajes del protocolo MCP en
-`stdin` y escribe las respuestas en `stdout`. Al ejecutarlo manualmente registra `server.ready`
-en `stderr` y queda esperando mensajes MCP.
+`stdin` y escribe las respuestas en `stdout`. Con `--http <addr>` no lee `stdin`: escucha
+Streamable HTTP en `POST <addr>/mcp` y sigue registrando en `stderr`. Al ejecutarlo manualmente
+registra `server.ready` en `stderr` y queda esperando mensajes MCP.
 
 ### Rutas por defecto
 
@@ -147,6 +148,108 @@ Cuando se omite `--config`, SIIASQL usa:
 - Auditoría: `~/.local/state/siiasql/audit.jsonl` (vía `XDG_STATE_HOME` si está definido).
 
 La configuración y el archivo de entorno se escriben con permisos `0600`.
+
+## Servidor HTTP (Streamable HTTP)
+
+`stdio` es el transporte por defecto. Para exponer el mismo servidor a un cliente que habla
+Streamable HTTP, arranca con `--http <addr>`. Esta es la ruta para quien clona el repositorio y
+quiere levantar el servidor localmente.
+
+### Requisitos
+
+- Go `1.25.0`, la versión que declara `go.mod`, con CGO habilitado.
+- Docker o Podman, solo si vas a usar la base de pruebas opcional (ver más abajo).
+
+### 1. Compilar
+
+```bash
+make fast             # gofmt, vet, tests, race y build — genera bin/siiasql
+# o solo compilar el binario:
+make build
+```
+
+### 2. Crear la configuración
+
+```bash
+./bin/siiasql init --config ./config.local.yaml
+```
+
+`init` crea `./config.local.yaml`, el sink de auditoría
+(`~/.local/state/siiasql/audit.jsonl`) y el esqueleto de secretos en `~/.config/siiasql/env`
+con permisos `0600`. No sobrescribe archivos existentes. Tanto `./config.local.yaml` como el
+archivo de entorno son locales: no los subas al repositorio.
+
+### 3. Completar los secretos
+
+Edita `~/.config/siiasql/env`:
+
+```sh
+SIIA_DB_HOST=127.0.0.1
+SIIA_DB_DATABASE=mydb
+SIIA_DB_USER=readonly_user
+SIIA_DB_PASSWORD=...
+```
+
+`connection.port` es un valor literal en la configuración (por defecto `5432`); si tu base
+escucha en otro puerto, cámbialo en `config.local.yaml`, no en el archivo de entorno.
+
+### 4. Base de pruebas opcional
+
+Si no tienes una base a mano, `scripts/it-pg.sh` levanta un PostgreSQL desechable y, con
+`KEEP_CONTAINER=1`, lo deja corriendo:
+
+```bash
+KEEP_CONTAINER=1 scripts/it-pg.sh 16
+```
+
+Queda en `127.0.0.1:55432` con usuario `ituser`, clave `itpass` y base `itdb` (credenciales
+solo del contenedor desechable). Con esa base, ajusta `connection.port` a `55432` en
+`config.local.yaml`. Para limpiarlo:
+
+```bash
+docker rm -f siiasql-it-16    # o: podman rm -f siiasql-it-16
+```
+
+### 5. Validar
+
+```bash
+./bin/siiasql doctor --config ./config.local.yaml
+```
+
+Debe terminar con `connection siia_ser: ok`.
+
+### 6. Arrancar en HTTP
+
+```bash
+./bin/siiasql --config ./config.local.yaml --http 127.0.0.1:8000
+```
+
+En `stderr` verás `listening over Streamable HTTP`. El endpoint es
+`POST http://127.0.0.1:8000/mcp`.
+
+### 7. Probar con curl
+
+El servidor no usa sesiones: cada request es independiente y no necesitas mantener un
+`Mcp-Session-Id`. `initialize` negocia `protocolVersion`:
+
+```bash
+curl -sS -X POST http://127.0.0.1:8000/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"curl","version":"0"}}}'
+```
+
+Y una consulta de solo lectura vía `db_query`:
+
+```bash
+curl -sS -X POST http://127.0.0.1:8000/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"db_query","arguments":{"connection":"siia_ser","sql":"SELECT 1 AS ok"}}}'
+```
+
+Cualquier sentencia que no sea un único `SELECT` de solo lectura se rechaza con
+`QUERY_REJECTED`.
 
 ## Configuración
 
@@ -235,7 +338,7 @@ connection:
 
 | Área | Regla |
 |------|-------|
-| Transporte | Solo `stdio` en v1. Sin listener HTTP. |
+| Transporte | `stdio` por defecto; Streamable HTTP opcional con `--http <addr>` (endpoint `POST /mcp`). |
 | Motor | Solo PostgreSQL en v1, con una **única conexión** (`connection`). |
 | Modo | Solo `readonly`. |
 | SQL | Una sentencia por request. Se rechazan escrituras, DDL, CTEs con escritura y multi-sentencias. |
