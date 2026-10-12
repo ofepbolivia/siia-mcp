@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net/http"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/siia/siia-mcp/internal/contract"
@@ -63,6 +65,36 @@ func (s *Server) Run(ctx context.Context, maxFrameBytes, maxNestingDepth int) er
 		return err
 	}
 	return s.sdk.Run(ctx, transport)
+}
+
+// RunHTTP serves the MCP protocol over Streamable HTTP until ctx is cancelled.
+// The server is stateless: no per-client session is kept between requests.
+func (s *Server) RunHTTP(ctx context.Context, addr string, maxBodyBytes int64) error {
+	handler := mcp.NewStreamableHTTPHandler(
+		func(*http.Request) *mcp.Server { return s.sdk },
+		&mcp.StreamableHTTPOptions{Stateless: true},
+	)
+
+	mux := http.NewServeMux()
+	mux.Handle("/mcp", http.MaxBytesHandler(handler, maxBodyBytes))
+
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           mux,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
+
+	errCh := make(chan error, 1)
+	go func() { errCh <- srv.ListenAndServe() }()
+
+	select {
+	case <-ctx.Done():
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		return srv.Shutdown(shutdownCtx)
+	case err := <-errCh:
+		return err
+	}
 }
 
 // notImplemented is the safe default handler before adapters are wired.

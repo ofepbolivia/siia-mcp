@@ -53,6 +53,7 @@ func runServer(args []string, stderr io.Writer) int {
 	flags := flag.NewFlagSet(programName, flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	configPath := flags.String("config", "", "path to the SIIASQL configuration file")
+	httpAddr := flags.String("http", "", "listen address for Streamable HTTP, e.g. 127.0.1:8000 (default: stdio)")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
@@ -93,11 +94,20 @@ func runServer(args []string, stderr io.Writer) int {
 
 	impl := &mcp.Implementation{Name: implementation, Version: version}
 	server := mcpserver.New(impl, mgr.HandleTool, logger)
-	logger.Info("MCP server started; waiting for stdio messages", "event", "server.ready")
+	run := func() error {
+		return server.Run(ctx, cfg.Limits.MCPFrameBytes, cfg.Limits.JSONNestingDepth)
+	}
+	if *httpAddr != "" {
+		logger.Info("MCP server started; listening over Streamable HTTP", "event", "server.ready", "addr", *httpAddr)
+		run = func() error {
+			return server.RunHTTP(ctx, *httpAddr, int64(cfg.Limits.MCPFrameBytes))
+		}
+	} else {
+		logger.Info("MCP server started; waiting for stdio messages", "event", "server.ready")
+	}
 
 	runErr := make(chan error, 1)
-	go func() { runErr <- server.Run(ctx, cfg.Limits.MCPFrameBytes, cfg.Limits.JSONNestingDepth) }()
-
+	go func() { runErr <- run() }()
 	// Single shutdown sequence on signal, fatal audit, transport/EOF error.
 	exitCode := 0
 	consumedRunErr := false
